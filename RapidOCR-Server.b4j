@@ -1,0 +1,61 @@
+﻿AppType=StandardJava
+Build1=Default,b4j.example
+Group=Default Group
+Library1=javaobject
+Library2=jcore
+Library3=jserver
+Library4=jstringutils
+Library5=json
+Module1=OCRHandler
+Module2=RapidOCREngine
+Module3=ShutdownHandler
+NumberOfFiles=0
+NumberOfLibraries=5
+NumberOfModules=3
+Version=9.8
+@EndOfDesignText@
+'Non-UI application (console / server application)
+#Region Project Attributes 
+	#CommandLineArgs:
+	#MergeLibraries: True 
+#End Region
+
+#AdditionalJar: rapidocr
+
+Sub Process_Globals
+	Public srvr As Server
+	Public engine As RapidOCREngine
+End Sub
+
+Sub AppStart (Args() As String)
+	Dim port As Int
+	Dim detectionModel As String = "ch_PP-OCRv3_det_infer.onnx"
+	Dim classificationModel As String = "ch_ppocr_mobile_v2.0_cls_infer.onnx"
+	Dim dict As String = "ppocr_keys_v1.txt"
+	Dim recognitionModel As String = "ch_PP-OCRv3_rec_infer.onnx"
+	If Args.Length>0 Then
+		port=Args(0)
+		If Args.Length == 5 Then
+			detectionModel = Args(1)
+			classificationModel = Args(2)
+			dict = Args(3)
+			recognitionModel = Args(4)
+		End If
+	Else
+		port=29979
+	End If
+	srvr.Initialize("srvr")
+	If File.Exists(File.DirApp, "tmp") = False Then
+		File.MakeDir(File.DirApp, "tmp")
+	End If
+	Dim jo As JavaObject = srvr
+	jo.GetFieldJO("context").RunMethod("setMaxFormContentSize", Array(10*1000*1000))'in bytes
+	srvr.Port = port
+	srvr.AddHandler("/ocr","OCRHandler",True)
+	srvr.AddHandler("/shutdown","ShutdownHandler",False)
+	srvr.Start
+	engine.Initialize
+	engine.InitModel(detectionModel,classificationModel,dict,recognitionModel)
+	Log("started")
+	StartMessageLoop
+End Sub
